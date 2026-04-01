@@ -80,7 +80,7 @@ def index(subpath=""):
     target = safe_path(subpath)
 
     if not os.path.exists(target):
-        abort(404)
+        os.makedirs(target, exist_ok=True)
 
     if os.path.isfile(target):
         directory = os.path.dirname(subpath)
