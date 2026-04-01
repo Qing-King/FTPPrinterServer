@@ -2,30 +2,33 @@
 
 ## 快速部署
 
-### 1. 上传脚本到云服务器
-
 ```bash
-scp setup_ftp.sh root@你的服务器IP:/root/
+git clone git@github.com:Qing-King/FTPPrinterServer.git
+cd FTPPrinterServer
 ```
 
-### 2. 修改配置
+### 1. 修改配置
 
-SSH 登录服务器后，编辑脚本开头的配置：
-
-```bash
-nano /root/setup_ftp.sh
-```
-
-必须修改的项：
-- `FTP_PASS` — 改为你自己的强密码
-- `SERVER_IP` — 如果自动获取不准确，手动填入公网 IP
-
-### 3. 执行部署
+编辑两个脚本开头的配置区域：
 
 ```bash
-chmod +x /root/setup_ftp.sh
-sudo bash /root/setup_ftp.sh
+nano setup_ftp.sh   # 修改 FTP_PASS
+nano setup_web.sh   # 修改 WEB_PASS
 ```
+
+### 2. 部署 FTP 服务器
+
+```bash
+sudo bash setup_ftp.sh
+```
+
+### 3. 部署 Web 文件管理器
+
+```bash
+sudo bash setup_web.sh
+```
+
+部署完成后，浏览器访问 `http://你的服务器IP:8080` 即可在线查看和下载扫描文件。
 
 ### 4. 云服务器安全组
 
@@ -34,6 +37,7 @@ sudo bash /root/setup_ftp.sh
 | 端口 | 协议 | 用途 |
 |------|------|------|
 | 21 | TCP | FTP 控制连接 |
+| 8080 | TCP | Web 文件管理器 |
 | 40000-40100 | TCP | FTP 被动模式数据传输 |
 
 ### 5. 打印机配置
@@ -51,8 +55,9 @@ sudo bash /root/setup_ftp.sh
 ## 常用维护命令
 
 ```bash
-# 查看 FTP 服务状态
+# 查看服务状态
 systemctl status vsftpd
+systemctl status filebrowser
 
 # 查看传输日志
 tail -f /var/log/vsftpd.log
@@ -62,6 +67,7 @@ ls -la /home/scanner/ftp/scans/
 
 # 重启服务
 systemctl restart vsftpd
+systemctl restart filebrowser
 ```
 
 ## 故障排查
@@ -71,8 +77,9 @@ systemctl restart vsftpd
 ftp localhost
 
 # 检查端口监听
-ss -tlnp | grep 21
+ss -tlnp | grep -E '21|8080'
 
-# 查看 vsftpd 日志
+# 查看日志
 journalctl -u vsftpd -f
+journalctl -u filebrowser -f
 ```
