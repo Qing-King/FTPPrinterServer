@@ -9,7 +9,8 @@ set -e
 # ---------- 配置区域（请根据实际情况修改） ----------
 FTP_USER="scanner"           # FTP 登录用户名
 FTP_PASS="YourStrongPass123" # FTP 登录密码（请修改为强密码）
-FTP_DIR="/home/scanner/ftp/scans"  # 扫描文件存储目录
+FTP_ROOT="/home/$FTP_USER/ftp"      # FTP 登录后的根目录
+FTP_DIR="$FTP_ROOT/scans"           # 扫描文件存储目录
 PASV_MIN=40000               # 被动模式端口范围（起始）
 PASV_MAX=40100               # 被动模式端口范围（结束）
 SERVER_IP=""                 # 云服务器公网 IP（留空则自动获取）
@@ -46,13 +47,13 @@ sort -u /etc/shells -o /etc/shells
 
 # 3. 创建扫描文件目录
 echo "[3/6] 创建扫描文件目录: $FTP_DIR"
-mkdir -p "$FTP_DIR"
-chown -R "$FTP_USER":"$FTP_USER" /home/"$FTP_USER"/ftp
-# vsftpd 要求 chroot 根目录不可写
-chmod 555 /home/"$FTP_USER"/ftp
+mkdir -p "$FTP_ROOT" "$FTP_DIR"
+# vsftpd 要求 chroot 根目录不可写，因此根目录交给 root 持有
+chown root:root "$FTP_ROOT"
+chmod 555 "$FTP_ROOT"
 # 扫描文件子目录可写
+chown -R "$FTP_USER":"$FTP_USER" "$FTP_DIR"
 chmod 755 "$FTP_DIR"
-chown "$FTP_USER":"$FTP_USER" "$FTP_DIR"
 
 # 4. 备份并写入 vsftpd 配置
 echo "[4/6] 配置 vsftpd..."
@@ -71,7 +72,7 @@ write_enable=YES
 # ---- 限制用户在主目录 ----
 chroot_local_user=YES
 allow_writeable_chroot=NO
-local_root=/home/$FTP_USER/ftp
+local_root=$FTP_ROOT
 
 # ---- 被动模式（云服务器必须配置） ----
 pasv_enable=YES
