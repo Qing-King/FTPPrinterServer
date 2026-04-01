@@ -6,15 +6,24 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CONFIG_FILE="$SCRIPT_DIR/config.sh"
+
+if [ -f "$CONFIG_FILE" ]; then
+    # Load local overrides that stay outside Git.
+    . "$CONFIG_FILE"
+fi
+
 # ---------- 配置区域 ----------
-WEB_PORT=9090                         # Web 访问端口
-WEB_USER="admin"                      # Web 登录用户名
-WEB_PASS="admin123"                   # Web 登录密码（请修改）
-SCAN_DIR="/home/scanner/ftp/scans"    # 扫描文件目录（与 FTP 一致）
+FTP_USER="${FTP_USER:-scanner}"                 # FTP 登录用户名
+FTP_ROOT="${FTP_ROOT:-/home/$FTP_USER/ftp}"     # FTP 登录后的根目录
+SCAN_DIR="${SCAN_DIR:-$FTP_ROOT/scans}"         # 扫描文件目录（与 FTP 一致）
+WEB_PORT="${WEB_PORT:-9090}"                    # Web 访问端口
+WEB_USER="${WEB_USER:-admin}"                   # Web 登录用户名
+WEB_PASS="${WEB_PASS:-admin123}"                # Web 登录密码（请修改）
 # ------------------------------
 
 INSTALL_DIR="/opt/scan-web"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "=========================================="
 echo "  Web 文件管理器部署 (Python + Flask)"

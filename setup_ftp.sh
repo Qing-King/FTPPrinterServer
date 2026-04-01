@@ -6,14 +6,22 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CONFIG_FILE="$SCRIPT_DIR/config.sh"
+
+if [ -f "$CONFIG_FILE" ]; then
+    # Load local overrides that stay outside Git.
+    . "$CONFIG_FILE"
+fi
+
 # ---------- 配置区域（请根据实际情况修改） ----------
-FTP_USER="scanner"           # FTP 登录用户名
-FTP_PASS="YourStrongPass123" # FTP 登录密码（请修改为强密码）
-FTP_ROOT="/home/$FTP_USER/ftp"      # FTP 登录后的根目录
-FTP_DIR="$FTP_ROOT/scans"           # 扫描文件存储目录
-PASV_MIN=40000               # 被动模式端口范围（起始）
-PASV_MAX=40100               # 被动模式端口范围（结束）
-SERVER_IP=""                 # 云服务器公网 IP（留空则自动获取）
+FTP_USER="${FTP_USER:-scanner}"                 # FTP 登录用户名
+FTP_PASS="${FTP_PASS:-YourStrongPass123}"       # FTP 登录密码（请修改为强密码）
+FTP_ROOT="${FTP_ROOT:-/home/$FTP_USER/ftp}"     # FTP 登录后的根目录
+FTP_DIR="${FTP_DIR:-$FTP_ROOT/scans}"           # 扫描文件存储目录
+PASV_MIN="${PASV_MIN:-40000}"                   # 被动模式端口范围（起始）
+PASV_MAX="${PASV_MAX:-40100}"                   # 被动模式端口范围（结束）
+SERVER_IP="${SERVER_IP:-}"                      # 云服务器公网 IP（留空则自动获取）
 # ---------------------------------------------------
 
 echo "=========================================="

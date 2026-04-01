@@ -9,12 +9,14 @@ cd FTPPrinterServer
 
 ### 1. 修改配置
 
-编辑两个脚本开头的配置区域：
+先复制本地配置文件，再编辑账号密码：
 
 ```bash
-nano setup_ftp.sh   # 修改 FTP_PASS
-nano setup_web.sh   # 修改 WEB_PASS
+cp config.example.sh config.sh
+nano config.sh
 ```
+
+`config.sh` 已加入 Git 忽略列表，之后你修改 FTP / Web 账号密码都不会进入提交。
 
 ### 2. 部署 FTP 服务器
 
