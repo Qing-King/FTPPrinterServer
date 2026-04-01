@@ -28,7 +28,7 @@ sudo bash setup_ftp.sh
 sudo bash setup_web.sh
 ```
 
-部署完成后，浏览器访问 `http://你的服务器IP:8080` 即可在线查看和下载扫描文件。
+部署完成后，浏览器访问 `http://你的服务器IP:9090` 即可在线查看和下载扫描文件。
 
 ### 4. 云服务器安全组
 
@@ -37,7 +37,7 @@ sudo bash setup_web.sh
 | 端口 | 协议 | 用途 |
 |------|------|------|
 | 21 | TCP | FTP 控制连接 |
-| 8080 | TCP | Web 文件管理器 |
+| 9090 | TCP | Web 文件管理器 |
 | 40000-40100 | TCP | FTP 被动模式数据传输 |
 
 ### 5. 打印机配置
@@ -57,7 +57,7 @@ sudo bash setup_web.sh
 ```bash
 # 查看服务状态
 systemctl status vsftpd
-systemctl status filebrowser
+systemctl status scan-web
 
 # 查看传输日志
 tail -f /var/log/vsftpd.log
@@ -67,7 +67,7 @@ ls -la /home/scanner/ftp/scans/
 
 # 重启服务
 systemctl restart vsftpd
-systemctl restart filebrowser
+systemctl restart scan-web
 ```
 
 ## 故障排查
@@ -77,9 +77,9 @@ systemctl restart filebrowser
 ftp localhost
 
 # 检查端口监听
-ss -tlnp | grep -E '21|8080'
+ss -tlnp | grep -E '21|9090'
 
 # 查看日志
 journalctl -u vsftpd -f
-journalctl -u filebrowser -f
+journalctl -u scan-web -f
 ```

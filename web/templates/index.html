@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>扫描文件管理</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, "Microsoft YaHei", sans-serif; background: #f0f2f5; color: #333; }
+        .header { background: #fff; padding: 16px 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+        .header h1 { font-size: 18px; font-weight: 600; }
+        .header a { color: #888; font-size: 14px; text-decoration: none; }
+        .header a:hover { color: #1890ff; }
+        .container { max-width: 960px; margin: 24px auto; padding: 0 16px; }
+        .breadcrumb { margin-bottom: 16px; font-size: 14px; color: #888; }
+        .breadcrumb a { color: #1890ff; text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
+        .file-list { background: #fff; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden; }
+        .file-item { display: flex; align-items: center; padding: 12px 20px; border-bottom: 1px solid #f0f0f0; transition: background 0.15s; }
+        .file-item:last-child { border-bottom: none; }
+        .file-item:hover { background: #fafafa; }
+        .file-icon { width: 36px; font-size: 22px; flex-shrink: 0; text-align: center; }
+        .file-info { flex: 1; min-width: 0; }
+        .file-name { font-size: 15px; color: #333; text-decoration: none; word-break: break-all; }
+        .file-name:hover { color: #1890ff; }
+        .file-meta { font-size: 12px; color: #aaa; margin-top: 2px; }
+        .file-actions { display: flex; gap: 8px; flex-shrink: 0; margin-left: 12px; }
+        .file-actions a, .file-actions button { padding: 5px 12px; border-radius: 4px; font-size: 13px; text-decoration: none; border: 1px solid #d9d9d9; background: #fff; color: #555; cursor: pointer; transition: all 0.2s; }
+        .file-actions a:hover, .file-actions button:hover { border-color: #1890ff; color: #1890ff; }
+        .file-actions .btn-delete { color: #ff4d4f; border-color: #ffccc7; }
+        .file-actions .btn-delete:hover { border-color: #ff4d4f; background: #fff2f0; }
+        .empty { text-align: center; padding: 60px 20px; color: #bbb; font-size: 15px; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal-content { max-width: 90vw; max-height: 90vh; border-radius: 8px; overflow: hidden; position: relative; }
+        .modal-content img { max-width: 90vw; max-height: 90vh; display: block; }
+        .modal-close { position: absolute; top: 8px; right: 12px; font-size: 28px; color: #fff; cursor: pointer; background: rgba(0,0,0,0.4); border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; }
+        @media (max-width: 600px) {
+            .file-item { padding: 10px 14px; }
+            .file-meta span:first-child { display: none; }
+            .file-actions a span, .file-actions button span { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>扫描文件管理</h1>
+        <a href="{{ url_for('logout') }}">退出登录</a>
+    </div>
+
+    <div class="container">
+        <div class="breadcrumb">
+            <a href="{{ url_for('index') }}">根目录</a>
+            {% if subpath %}
+                {% set parts = subpath.split('/') %}
+                {% for part in parts %}
+                    / <a href="{{ url_for('index', subpath='/'.join(parts[:loop.index])) }}">{{ part }}</a>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        <div class="file-list">
+            {% if parent is not none %}
+            <div class="file-item">
+                <div class="file-icon">📁</div>
+                <div class="file-info">
+                    <a class="file-name" href="{{ url_for('index', subpath=parent) }}">..</a>
+                    <div class="file-meta">返回上级目录</div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if not items and parent is none %}
+            <div class="empty">暂无扫描文件，打印机扫描后会自动出现在这里</div>
+            {% endif %}
+
+            {% for item in items %}
+            <div class="file-item">
+                <div class="file-icon">
+                    {% if item.is_dir %}📁
+                    {% elif item.is_pdf %}📄
+                    {% elif item.is_image %}🖼️
+                    {% else %}📎
+                    {% endif %}
+                </div>
+                <div class="file-info">
+                    {% if item.is_dir %}
+                        <a class="file-name" href="{{ url_for('index', subpath=item.path) }}">{{ item.name }}</a>
+                    {% else %}
+                        <a class="file-name" href="{{ url_for('download', subpath=item.path) }}">{{ item.name }}</a>
+                    {% endif %}
+                    <div class="file-meta">
+                        <span>{{ item.size }}</span> &nbsp; <span>{{ item.mtime }}</span>
+                    </div>
+                </div>
+                {% if not item.is_dir %}
+                <div class="file-actions">
+                    {% if item.is_image %}
+                    <a href="javascript:void(0)" onclick="showPreview('{{ url_for('preview', subpath=item.path) }}')" title="预览">🔍 <span>预览</span></a>
+                    {% elif item.is_pdf %}
+                    <a href="{{ url_for('preview', subpath=item.path) }}" target="_blank" title="预览">🔍 <span>预览</span></a>
+                    {% endif %}
+                    <a href="{{ url_for('download', subpath=item.path) }}" title="下载">⬇ <span>下载</span></a>
+                    <form method="POST" action="{{ url_for('delete', subpath=item.path) }}" style="display:inline" onsubmit="return confirm('确定删除 {{ item.name }}？')">
+                        <button type="submit" class="btn-delete" title="删除">🗑 <span>删除</span></button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="previewModal" onclick="closePreview()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closePreview()">&times;</button>
+            <img id="previewImg" src="" alt="预览">
+        </div>
+    </div>
+
+    <script>
+        function showPreview(url) {
+            document.getElementById('previewImg').src = url;
+            document.getElementById('previewModal').classList.add('active');
+        }
+        function closePreview() {
+            document.getElementById('previewModal').classList.remove('active');
+            document.getElementById('previewImg').src = '';
+        }
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closePreview();
+        });
+    </script>
+</body>
+</html>

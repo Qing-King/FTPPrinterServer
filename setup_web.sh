@@ -1,64 +1,54 @@
 #!/bin/bash
 # ============================================
-# Web 文件管理器部署脚本 (FileBrowser)
+# Web 文件管理器部署脚本 (Python + Flask)
 # 用途：通过浏览器下载打印机扫描的文件
 # ============================================
 
 set -e
 
 # ---------- 配置区域 ----------
-WEB_PORT=8080                         # Web 访问端口
+WEB_PORT=9090                         # Web 访问端口
 WEB_USER="admin"                      # Web 登录用户名
 WEB_PASS="admin123"                   # Web 登录密码（请修改）
 SCAN_DIR="/home/scanner/ftp/scans"    # 扫描文件目录（与 FTP 一致）
 # ------------------------------
 
+INSTALL_DIR="/opt/scan-web"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 echo "=========================================="
-echo "  Web 文件管理器部署 (FileBrowser)"
+echo "  Web 文件管理器部署 (Python + Flask)"
 echo "=========================================="
 
-# 1. 安装 FileBrowser
-echo "[1/4] 安装 FileBrowser..."
-if command -v filebrowser &>/dev/null; then
-    echo "  FileBrowser 已安装，跳过"
-else
-    curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash
-    echo "  安装完成"
-fi
+# 1. 安装 Python 依赖
+echo "[1/4] 安装 Python 环境..."
+apt update -y
+apt install -y python3 python3-venv python3-pip
 
-# 2. 初始化配置
-echo "[2/4] 初始化配置..."
-FB_DB="/etc/filebrowser/filebrowser.db"
-FB_CONFIG="/etc/filebrowser/config.json"
-mkdir -p /etc/filebrowser
+# 2. 部署应用
+echo "[2/4] 部署应用到 $INSTALL_DIR..."
+mkdir -p "$INSTALL_DIR"
+cp -r "$SCRIPT_DIR"/web/* "$INSTALL_DIR"/
 
-# 写入配置文件
-cat > "$FB_CONFIG" << EOF
-{
-  "port": $WEB_PORT,
-  "address": "0.0.0.0",
-  "database": "$FB_DB",
-  "root": "$SCAN_DIR",
-  "log": "/var/log/filebrowser.log",
-  "locale": "zh-cn"
-}
-EOF
-
-# 初始化数据库并设置管理员账号
-rm -f "$FB_DB"
-filebrowser config init -c "$FB_CONFIG"
-filebrowser users add "$WEB_USER" "$WEB_PASS" --perm.admin -c "$FB_CONFIG"
+# 创建虚拟环境并安装依赖
+python3 -m venv "$INSTALL_DIR/venv"
+"$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/requirements.txt"
 
 # 3. 创建 systemd 服务
 echo "[3/4] 创建系统服务..."
-cat > /etc/systemd/system/filebrowser.service << EOF
+cat > /etc/systemd/system/scan-web.service << EOF
 [Unit]
-Description=FileBrowser - Web File Manager
+Description=Scan File Web Manager
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/filebrowser -c $FB_CONFIG
+Environment="SCAN_DIR=$SCAN_DIR"
+Environment="WEB_USER=$WEB_USER"
+Environment="WEB_PASS=$WEB_PASS"
+Environment="SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
+WorkingDirectory=$INSTALL_DIR
+ExecStart=$INSTALL_DIR/venv/bin/gunicorn -w 2 -b 0.0.0.0:$WEB_PORT app:app
 Restart=on-failure
 RestartSec=5
 
@@ -67,8 +57,8 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable filebrowser
-systemctl restart filebrowser
+systemctl enable scan-web
+systemctl restart scan-web
 
 # 4. 配置防火墙
 echo "[4/4] 配置防火墙..."
@@ -97,6 +87,5 @@ echo "  └───────────────────────
 echo ""
 echo "  ⚠ 重要提醒："
 echo "  1. 请确保云服务器安全组放通端口：$WEB_PORT"
-echo "  2. 请登录后立即修改默认密码"
-echo "  3. 如需 HTTPS，建议用 Nginx 反向代理 + Let's Encrypt"
+echo "  2. 请登录后修改默认密码（或修改脚本重新部署）"
 echo "=========================================="
